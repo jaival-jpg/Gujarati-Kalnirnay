@@ -1,0 +1,8 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "pgSHTXHFau_Siv14C_y1B"
+uri = "file://artifacts/gujarati-calendar/assets/images/icon.png"
+type = "image"
+title = "gujarati calendar app icon"

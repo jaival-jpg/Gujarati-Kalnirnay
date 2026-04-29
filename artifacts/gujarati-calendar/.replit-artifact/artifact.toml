@@ -1,0 +1,27 @@
+kind = "mobile"
+previewPath = "/"
+title = "Gujarati Calendar"
+version = "1.0.0"
+id = "artifacts/gujarati-calendar"
+router = "expo-domain"
+
+[[integratedSkills]]
+name = "expo"
+version = "1.0.0"
+
+[[services]]
+ensurePreviewReachable = "/status"
+name = "expo"
+paths = [ "/" ]
+localPort = 24132
+
+[services.development]
+run = "pnpm --filter @workspace/gujarati-calendar run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/gujarati-calendar", "run", "build" ]
+run = [ "pnpm", "--filter", "@workspace/gujarati-calendar", "run", "serve" ]
+
+[services.env]
+PORT = "24132"
+BASE_PATH = "/"

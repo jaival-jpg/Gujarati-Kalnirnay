@@ -98,7 +98,7 @@ export function CalendarMonth({
     ? "rgba(255,255,255,0.07)"
     : "rgba(217,76,42,0.10)";
 
-  const cellBg = "#FFFFFF";
+  const cellBg = "#FFF4E6";
   const todayRed = "#E53935";
 
   return (

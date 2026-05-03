@@ -98,7 +98,7 @@ export function CalendarMonth({
     ? "rgba(255,255,255,0.07)"
     : "rgba(217,76,42,0.10)";
 
-  const cellBg = isDark ? colors.card : "#FFFFFF";
+  const cellBg = "#FFFFFF";
   const todayRed = "#E53935";
 
   return (
@@ -286,10 +286,10 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   tithi: {
-    fontSize: 8,
+    fontSize: 10,
     textAlign: "center",
     paddingHorizontal: 1,
-    lineHeight: 10,
+    lineHeight: 12,
   },
   dot: {
     width: 4,

@@ -11,6 +11,7 @@ interface CalendarMonthProps {
   year: number;
   month: number; // 0-11
   selectedDate?: Date | null;
+  festivalDays?: Set<number>;
   onSelectDay?: (date: Date) => void;
 }
 
@@ -19,7 +20,6 @@ interface CellMeta {
   inMonth: boolean;
   date: Date;
   tithiGu: string;
-  pakshaGu: string;
   isShubh: boolean;
   isAshubh: boolean;
   isFestival: boolean;
@@ -30,9 +30,17 @@ export function CalendarMonth({
   year,
   month,
   selectedDate,
+  festivalDays: externalFestivalDays,
   onSelectDay,
 }: CalendarMonthProps) {
   const colors = useColors();
+  const isDark = colors.scheme === "dark";
+
+  const internalFestivalDays = useMemo(
+    () => new Set(festivalsForMonth(month + 1).map((f) => f.day)),
+    [month],
+  );
+  const festivalDays = externalFestivalDays ?? internalFestivalDays;
 
   const grid = useMemo<CellMeta[][]>(() => {
     const first = new Date(year, month, 1);
@@ -41,17 +49,13 @@ export function CalendarMonth({
     const prevMonthDays = new Date(year, month, 0).getDate();
     const totalCells = Math.ceil((startWeekday + daysInMonth) / 7) * 7;
 
-    const monthFestivals = new Set(
-      festivalsForMonth(month + 1).map((f) => f.day),
-    );
-
     const flat: CellMeta[] = [];
     for (let i = 0; i < totalCells; i++) {
+      const weekday = i % 7;
       let cellYear = year;
       let cellMonth = month;
       let day: number;
       let inMonth = true;
-      const weekday = i % 7;
 
       if (i < startWeekday) {
         day = prevMonthDays - (startWeekday - 1 - i);
@@ -72,50 +76,43 @@ export function CalendarMonth({
       flat.push({
         day, inMonth, date,
         tithiGu: p.tithiGu,
-        pakshaGu: p.pakshaGu,
         isShubh: p.isShubh,
         isAshubh: p.isAshubh,
-        isFestival: inMonth && monthFestivals.has(day),
+        isFestival: inMonth && festivalDays.has(day),
         isSunday: weekday === 0,
       });
     }
 
-    // chunk into weeks
     const rows: CellMeta[][] = [];
     for (let r = 0; r < flat.length / 7; r++) {
       rows.push(flat.slice(r * 7, r * 7 + 7));
     }
     return rows;
-  }, [year, month]);
+  }, [year, month, festivalDays]);
 
   const today = new Date();
   const isCurrentMonth =
     today.getFullYear() === year && today.getMonth() === month;
 
-  const isDark = colors.scheme === "dark";
+  const gridLine = isDark
+    ? "rgba(255,255,255,0.07)"
+    : "rgba(217,76,42,0.10)";
 
-  const gridLine = isDark ? "rgba(255,255,255,0.07)" : "rgba(217,76,42,0.10)";
-  const outerBorder = isDark ? "rgba(255,255,255,0.09)" : "rgba(217,76,42,0.13)";
+  const cellBg = isDark ? colors.card : "#FFFFFF";
+  const todayRed = "#E53935";
 
   return (
     <View>
       {/* Weekday header */}
-      <View
-        style={[
-          styles.weekHeaderRow,
-          { borderBottomColor: gridLine, borderBottomWidth: 1 },
-        ]}
-      >
+      <View style={styles.weekRow}>
         {VAAR_SHORT_GU.map((label, idx) => (
-          <View key={label} style={styles.weekHeaderCell}>
+          <View key={label} style={styles.weekCell}>
             <Text
               style={[
-                styles.weekHeaderText,
+                styles.weekLabel,
                 {
-                  color: idx === 0
-                    ? colors.primary
-                    : colors.mutedForeground,
-                  opacity: 0.85,
+                  color: idx === 0 ? todayRed : colors.mutedForeground,
+                  fontWeight: idx === 0 ? "700" : "600",
                 },
               ]}
             >
@@ -125,18 +122,15 @@ export function CalendarMonth({
         ))}
       </View>
 
-      {/* Grid rows */}
-      <View style={[styles.gridOuter, { borderColor: outerBorder, borderWidth: 1 }]}>
+      {/* Grid */}
+      <View
+        style={[
+          styles.gridWrap,
+          { borderColor: gridLine, borderWidth: 1, backgroundColor: gridLine },
+        ]}
+      >
         {grid.map((row, rowIdx) => (
-          <View
-            key={rowIdx}
-            style={[
-              styles.gridRow,
-              rowIdx < grid.length - 1
-                ? { borderBottomColor: gridLine, borderBottomWidth: 1 }
-                : null,
-            ]}
-          >
+          <View key={rowIdx} style={styles.gridRow}>
             {row.map((cell, colIdx) => {
               const isToday =
                 isCurrentMonth &&
@@ -146,34 +140,98 @@ export function CalendarMonth({
               const isSelected =
                 selectedDate != null &&
                 cell.inMonth &&
-                selectedDate.getFullYear() === year &&
+                selectedDate.getFullYear() === (cell.inMonth ? year : cell.date.getFullYear()) &&
                 selectedDate.getMonth() === month &&
                 selectedDate.getDate() === cell.day;
 
+              // Colour logic
+              const isHoliday = (cell.isSunday || cell.isFestival) && cell.inMonth;
+              const numColor = isToday
+                ? colors.primaryForeground
+                : !cell.inMonth
+                ? colors.mutedForeground + "55"
+                : isHoliday
+                ? todayRed
+                : colors.primary;
+
+              const dotColor = cell.isShubh
+                ? colors.success
+                : cell.isAshubh
+                ? colors.danger
+                : null;
+
               return (
-                <React.Fragment key={colIdx}>
-                  {colIdx > 0 && (
-                    <View
-                      style={{
-                        width: 1,
-                        backgroundColor: gridLine,
-                        alignSelf: "stretch",
-                      }}
-                    />
-                  )}
-                  <DayCell
-                    cell={cell}
-                    isToday={isToday}
-                    isSelected={isSelected}
-                    colors={colors}
-                    onPress={() =>
-                      cell.inMonth &&
-                      (onSelectDay
-                        ? onSelectDay(cell.date)
-                        : navigateToDate(cell.date))
+                <Pressable
+                  key={colIdx}
+                  onPress={() => {
+                    if (onSelectDay) {
+                      onSelectDay(cell.date);
+                    } else {
+                      navigateToDate(cell.date);
                     }
-                  />
-                </React.Fragment>
+                  }}
+                  style={({ pressed }) => [
+                    styles.cell,
+                    {
+                      backgroundColor: isToday
+                        ? colors.primary
+                        : isSelected
+                        ? colors.primarySoft
+                        : cellBg,
+                      opacity: pressed ? 0.75 : 1,
+                      marginRight: colIdx < 6 ? 1 : 0,
+                      marginBottom: rowIdx < grid.length - 1 ? 1 : 0,
+                    },
+                  ]}
+                >
+                  {/* Today ring */}
+                  {isToday && (
+                    <View style={styles.todayRing} />
+                  )}
+
+                  {/* Day number */}
+                  <Text
+                    style={[
+                      styles.dayNum,
+                      { color: numColor, fontWeight: isToday || isHoliday ? "800" : "700" },
+                    ]}
+                  >
+                    {toGujaratiDigits(cell.day)}
+                  </Text>
+
+                  {/* Tithi */}
+                  <Text
+                    style={[
+                      styles.tithi,
+                      {
+                        color: isToday
+                          ? "rgba(255,255,255,0.80)"
+                          : !cell.inMonth
+                          ? colors.mutedForeground + "55"
+                          : colors.mutedForeground,
+                      },
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {cell.tithiGu}
+                  </Text>
+
+                  {/* Status dot */}
+                  {dotColor && cell.inMonth ? (
+                    <View
+                      style={[
+                        styles.dot,
+                        {
+                          backgroundColor: isToday
+                            ? "rgba(255,255,255,0.85)"
+                            : dotColor,
+                        },
+                      ]}
+                    />
+                  ) : (
+                    <View style={styles.dotSpace} />
+                  )}
+                </Pressable>
               );
             })}
           </View>
@@ -183,158 +241,63 @@ export function CalendarMonth({
   );
 }
 
-interface DayCellProps {
-  cell: CellMeta;
-  isToday: boolean;
-  isSelected: boolean;
-  colors: ReturnType<typeof useColors>;
-  onPress: () => void;
-}
-
-function DayCell({ cell, isToday, isSelected, colors, onPress }: DayCellProps) {
-  const dimText = !cell.inMonth;
-
-  const dotColor = cell.isFestival
-    ? colors.festival
-    : cell.isShubh
-    ? colors.success
-    : cell.isAshubh
-    ? colors.danger
-    : null;
-
-  return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.dayCell,
-        {
-          backgroundColor: isToday
-            ? colors.primary
-            : isSelected
-            ? colors.primarySoft
-            : pressed && cell.inMonth
-            ? colors.primarySoft + "88"
-            : "transparent",
-          opacity: dimText ? 0.32 : pressed ? 0.9 : 1,
-        },
-      ]}
-    >
-      {/* Day number */}
-      <View
-        style={[
-          styles.dayNumWrap,
-          isToday && { backgroundColor: "rgba(255,255,255,0.22)", borderRadius: 14 },
-        ]}
-      >
-        <Text
-          style={[
-            styles.dayNum,
-            {
-              color: isToday
-                ? colors.primaryForeground
-                : cell.isSunday && cell.inMonth
-                ? colors.primary
-                : colors.foreground,
-              fontWeight: isToday ? "800" : "600",
-            },
-          ]}
-        >
-          {toGujaratiDigits(cell.day)}
-        </Text>
-      </View>
-
-      {/* Tithi */}
-      <Text
-        style={[
-          styles.tithiText,
-          {
-            color: isToday
-              ? "rgba(255,255,255,0.85)"
-              : colors.mutedForeground,
-          },
-        ]}
-        numberOfLines={1}
-      >
-        {cell.tithiGu}
-      </Text>
-
-      {/* Dot indicator */}
-      {dotColor ? (
-        <View
-          style={[
-            styles.dot,
-            {
-              backgroundColor: isToday ? "rgba(255,255,255,0.9)" : dotColor,
-            },
-          ]}
-        />
-      ) : (
-        <View style={styles.dotSpace} />
-      )}
-    </Pressable>
-  );
-}
-
 function navigateToDate(date: Date) {
   const iso = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
   router.push(`/date/${iso}`);
 }
 
 const styles = StyleSheet.create({
-  weekHeaderRow: {
+  weekRow: {
     flexDirection: "row",
-    paddingBottom: 10,
-    paddingTop: 2,
+    paddingBottom: 6,
   },
-  weekHeaderCell: {
+  weekCell: {
     flex: 1,
     alignItems: "center",
   },
-  weekHeaderText: {
+  weekLabel: {
     fontSize: 11,
-    fontWeight: "700",
-    letterSpacing: 0.5,
+    letterSpacing: 0.4,
     textTransform: "uppercase",
   },
-  gridOuter: {
-    borderRadius: 16,
+  gridWrap: {
+    borderRadius: 14,
     overflow: "hidden",
+    gap: 0,
   },
   gridRow: {
     flexDirection: "row",
-    alignItems: "stretch",
   },
-  dayCell: {
+  cell: {
     flex: 1,
     alignItems: "center",
-    paddingTop: 9,
-    paddingBottom: 8,
-    gap: 3,
+    paddingTop: 8,
+    paddingBottom: 7,
+    gap: 2,
+    position: "relative",
   },
-  dayNumWrap: {
-    minWidth: 28,
-    height: 28,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 4,
+  todayRing: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 0,
   },
   dayNum: {
     fontSize: 15,
     textAlign: "center",
+    lineHeight: 18,
   },
-  tithiText: {
-    fontSize: 8.5,
+  tithi: {
+    fontSize: 8,
     textAlign: "center",
-    letterSpacing: 0.1,
     paddingHorizontal: 1,
+    lineHeight: 10,
   },
   dot: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
+    width: 4,
+    height: 4,
+    borderRadius: 2,
   },
   dotSpace: {
-    width: 5,
-    height: 5,
+    width: 4,
+    height: 4,
   },
 });

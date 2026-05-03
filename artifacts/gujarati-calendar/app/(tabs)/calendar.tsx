@@ -1,5 +1,4 @@
 import { Feather } from "@expo/vector-icons";
-import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
@@ -18,7 +17,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { CalendarMonth } from "@/components/CalendarMonth";
-import { MONTHS_EN_GU, VIKRAM_MONTHS_GU } from "@/constants/panchang";
+import { MONTHS_EN_GU } from "@/constants/panchang";
 import { festivalsForMonth } from "@/data/festivals";
 import { useColors } from "@/hooks/useColors";
 import { computePanchang, toGujaratiDigits } from "@/lib/panchang";
@@ -42,28 +41,28 @@ export default function CalendarScreen() {
       Animated.parallel([
         Animated.timing(fade, {
           toValue: 0,
-          duration: 100,
+          duration: 90,
           useNativeDriver: true,
           easing: Easing.out(Easing.quad),
         }),
         Animated.timing(slideX, {
-          toValue: -direction * 32,
-          duration: 100,
+          toValue: -direction * 28,
+          duration: 90,
           useNativeDriver: true,
         }),
       ]).start(() => {
         fn();
-        slideX.setValue(direction * 32);
+        slideX.setValue(direction * 28);
         Animated.parallel([
           Animated.timing(fade, {
             toValue: 1,
-            duration: 200,
+            duration: 180,
             useNativeDriver: true,
             easing: Easing.out(Easing.cubic),
           }),
           Animated.timing(slideX, {
             toValue: 0,
-            duration: 220,
+            duration: 200,
             useNativeDriver: true,
             easing: Easing.out(Easing.cubic),
           }),
@@ -112,71 +111,61 @@ export default function CalendarScreen() {
   );
 
   const monthFestivals = useMemo(() => festivalsForMonth(month + 1), [month]);
-
-  const isThisMonth =
-    year === today.getFullYear() && month === today.getMonth();
-
-  const todayPanchang = useMemo(() => computePanchang(today), [today]);
+  const festivalDays = useMemo(
+    () => new Set(monthFestivals.map((f) => f.day)),
+    [monthFestivals],
+  );
 
   const selectedPanchang = useMemo(
     () => (selectedDate ? computePanchang(selectedDate) : null),
     [selectedDate],
   );
 
-  const vikramMonth = useMemo(() => {
+  const vikramInfo = useMemo(() => {
     const sample = new Date(year, month, 15);
-    return computePanchang(sample).vikramMonthGu;
+    return computePanchang(sample);
   }, [year, month]);
+
+  const isThisMonth =
+    year === today.getFullYear() && month === today.getMonth();
 
   const isDark = colors.scheme === "dark";
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      {/* ─── Gradient Header ─── */}
+      {/* ── Compact gradient header ── */}
       <LinearGradient
         colors={[colors.gradientStart, colors.gradientMid, colors.gradientEnd]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={[styles.header, { paddingTop: (insets.top || 16) + 12 }]}
+        style={[styles.header, { paddingTop: (insets.top || 16) + 6 }]}
       >
-        {/* Decorative glow circles */}
-        <View style={[styles.glowCircle, styles.glowCircle1]} />
-        <View style={[styles.glowCircle, styles.glowCircle2]} />
+        <View style={styles.glowCircle} />
 
-        <View style={styles.headerTop}>
-          <View>
-            <Text style={styles.headerLabel}>ગુજરાતી</Text>
-            <Text style={styles.headerTitle}>કેલેન્ડર</Text>
-          </View>
+        {/* Title row */}
+        <View style={styles.titleRow}>
+          <Text style={styles.pageTitle}>કેલેન્ડર</Text>
           <Pressable onPress={goToday} style={styles.todayBtn} hitSlop={8}>
-            <Feather name="crosshair" size={15} color="#FFFFFF" />
+            <Feather name="crosshair" size={13} color="#fff" />
             <Text style={styles.todayBtnText}>આજ</Text>
           </Pressable>
         </View>
 
-        {/* Month navigator */}
-        <View style={styles.monthNavRow}>
+        {/* Month nav */}
+        <View style={styles.monthRow}>
           <Pressable
             onPress={goPrev}
             style={({ pressed }) => [styles.navArrow, { opacity: pressed ? 0.6 : 1 }]}
             hitSlop={10}
           >
-            <Feather name="chevron-left" size={20} color="rgba(255,255,255,0.9)" />
+            <Feather name="chevron-left" size={18} color="rgba(255,255,255,0.9)" />
           </Pressable>
 
-          <View style={styles.monthCenterBlock}>
+          <View style={styles.monthCenter}>
             <Text style={styles.monthName}>{MONTHS_EN_GU[month]}</Text>
-            <View style={styles.monthMeta}>
-              <Text style={styles.monthMetaText}>{vikramMonth}</Text>
-              <View style={styles.monthMetaDot} />
-              <Text style={styles.monthMetaText}>
-                {toGujaratiDigits(year)}
-              </Text>
-              <View style={styles.monthMetaDot} />
-              <Text style={styles.monthMetaText}>
-                વિ.સં. {toGujaratiDigits(year + 57)}
-              </Text>
-            </View>
+            <Text style={styles.monthSub}>
+              {vikramInfo.vikramMonthGu}  ·  {toGujaratiDigits(year)}  ·  વિ.સં. {toGujaratiDigits(year + 57)}
+            </Text>
           </View>
 
           <Pressable
@@ -184,39 +173,24 @@ export default function CalendarScreen() {
             style={({ pressed }) => [styles.navArrow, { opacity: pressed ? 0.6 : 1 }]}
             hitSlop={10}
           >
-            <Feather name="chevron-right" size={20} color="rgba(255,255,255,0.9)" />
+            <Feather name="chevron-right" size={18} color="rgba(255,255,255,0.9)" />
           </Pressable>
         </View>
-
-        {/* Mini stats strip */}
-        {isThisMonth && (
-          <View style={styles.statsStrip}>
-            <StatPill label="તિથિ" value={`${todayPanchang.pakshaGu} ${todayPanchang.tithiGu}`} />
-            <View style={styles.statsDivider} />
-            <StatPill label="નક્ષત્ર" value={todayPanchang.nakshatraGu} />
-            <View style={styles.statsDivider} />
-            <StatPill label="તહેવારો" value={toGujaratiDigits(monthFestivals.length)} />
-          </View>
-        )}
       </LinearGradient>
 
       <ScrollView
         contentContainerStyle={{
-          paddingBottom: insets.bottom + TAB_BAR_HEIGHT + 28,
+          paddingHorizontal: 12,
+          paddingTop: 12,
+          paddingBottom: insets.bottom + TAB_BAR_HEIGHT + 20,
         }}
         showsVerticalScrollIndicator={false}
       >
-        {/* ─── Calendar Card ─── */}
+        {/* ── Calendar card ── */}
         <Animated.View
           {...panResponder.panHandlers}
-          style={{
-            opacity: fade,
-            transform: [{ translateX: slideX }],
-            marginTop: -24,
-            marginHorizontal: 14,
-          }}
+          style={{ opacity: fade, transform: [{ translateX: slideX }] }}
         >
-          {/* Outer glass card */}
           <View
             style={[
               styles.calCard,
@@ -224,59 +198,46 @@ export default function CalendarScreen() {
                 backgroundColor: isDark ? colors.card : "#FFFFFF",
                 borderColor: isDark
                   ? "rgba(255,255,255,0.09)"
-                  : "rgba(217,76,42,0.12)",
+                  : "rgba(217,76,42,0.14)",
                 shadowColor: colors.shadow,
               },
             ]}
           >
-            {/* Blur effect on iOS */}
-            {Platform.OS === "ios" && (
-              <BlurView
-                intensity={30}
-                tint={isDark ? "dark" : "light"}
-                style={[StyleSheet.absoluteFill, { borderRadius: 24 }]}
-              />
-            )}
-
-            <View style={styles.calInner}>
-              {/* Legend row */}
-              <View style={styles.legendRow}>
-                <LegendDot color={colors.success} label="શુભ" />
-                <LegendDot color={colors.danger} label="અશુભ" />
-                <LegendDot color={colors.festival} label="તહેવાર" />
-                <LegendDot
-                  color={colors.primary}
-                  label="આજ"
-                  filled
-                />
-              </View>
-
-              <View
-                style={[
-                  styles.legendLine,
-                  {
-                    backgroundColor: isDark
-                      ? "rgba(255,255,255,0.07)"
-                      : "rgba(217,76,42,0.10)",
-                  },
-                ]}
-              />
-
-              {/* The calendar grid */}
-              <CalendarMonth
-                year={year}
-                month={month}
-                selectedDate={selectedDate}
-                onSelectDay={(date) => {
-                  if (Platform.OS !== "web") Haptics.selectionAsync();
-                  setSelectedDate(date);
-                }}
-              />
+            {/* Legend */}
+            <View style={styles.legendRow}>
+              <LegendItem color={colors.primary} label="સામાન્ય" dot />
+              <LegendItem color="#E53935" label="રવિ / તહેવાર" dot />
+              <LegendItem color={colors.success} label="શુભ" smallDot />
+              <LegendItem color={colors.danger} label="અશુભ" smallDot />
             </View>
+
+            <View
+              style={[
+                styles.legendSep,
+                {
+                  backgroundColor: isDark
+                    ? "rgba(255,255,255,0.07)"
+                    : "rgba(217,76,42,0.10)",
+                },
+              ]}
+            />
+
+            <CalendarMonth
+              year={year}
+              month={month}
+              selectedDate={selectedDate}
+              festivalDays={festivalDays}
+              onSelectDay={(date) => {
+                if (Platform.OS !== "web") Haptics.selectionAsync();
+                setSelectedDate(date);
+                const iso = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+                router.push(`/date/${iso}`);
+              }}
+            />
           </View>
         </Animated.View>
 
-        {/* ─── Selected day detail card ─── */}
+        {/* ── Selected date quick-card (no auto-nav, just info) ── */}
         {selectedDate && selectedPanchang && (
           <Pressable
             onPress={() => {
@@ -286,63 +247,46 @@ export default function CalendarScreen() {
             style={({ pressed }) => [
               styles.selectedCard,
               {
-                marginHorizontal: 14,
-                marginTop: 14,
-                backgroundColor: colors.card,
-                borderColor: colors.primary + "44",
+                backgroundColor: isDark ? colors.card : "#FFFFFF",
+                borderColor: colors.primary + "55",
                 shadowColor: colors.shadow,
-                transform: [{ scale: pressed ? 0.99 : 1 }],
-                opacity: pressed ? 0.92 : 1,
+                opacity: pressed ? 0.9 : 1,
               },
             ]}
           >
             <LinearGradient
-              colors={[colors.gradientStart + "22", colors.gradientEnd + "11"]}
+              colors={[colors.gradientStart + "18", colors.gradientEnd + "08"]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
-              style={styles.selectedCardGradient}
+              style={StyleSheet.absoluteFillObject}
             />
-            <View style={styles.selectedCardRow}>
-              <View
-                style={[
-                  styles.selectedDateChip,
-                  { backgroundColor: colors.primary },
-                ]}
-              >
-                <Text style={[styles.selectedDateNum, { color: colors.primaryForeground }]}>
+            <View style={styles.selectedInner}>
+              <View style={[styles.selectedChip, { backgroundColor: colors.primary }]}>
+                <Text style={[styles.selectedChipNum, { color: colors.primaryForeground }]}>
                   {toGujaratiDigits(selectedDate.getDate())}
                 </Text>
-                <Text style={[styles.selectedDateMonth, { color: colors.primaryForeground }]}>
+                <Text style={[styles.selectedChipMonth, { color: colors.primaryForeground }]}>
                   {MONTHS_EN_GU[selectedDate.getMonth()].slice(0, 3)}
                 </Text>
               </View>
-              <View style={styles.selectedInfo}>
+              <View style={styles.selectedBody}>
                 <Text style={[styles.selectedTithi, { color: colors.foreground }]}>
                   {selectedPanchang.pakshaGu} {selectedPanchang.tithiGu}
                 </Text>
-                <Text style={[styles.selectedNak, { color: colors.mutedForeground }]}>
-                  {selectedPanchang.nakshatraGu} • {selectedPanchang.vaarGu}
+                <Text style={[styles.selectedMeta, { color: colors.mutedForeground }]}>
+                  {selectedPanchang.nakshatraGu}  ·  {selectedPanchang.vaarGu}  ·  {selectedPanchang.yogaGu}
                 </Text>
                 <View style={styles.selectedBadges}>
                   {selectedPanchang.isShubh && (
                     <View style={[styles.badge, { backgroundColor: colors.successSoft }]}>
-                      <Text style={[styles.badgeText, { color: colors.success }]}>
-                        શુભ
-                      </Text>
+                      <Text style={[styles.badgeTxt, { color: colors.success }]}>શુભ</Text>
                     </View>
                   )}
                   {selectedPanchang.isAshubh && (
                     <View style={[styles.badge, { backgroundColor: colors.dangerSoft }]}>
-                      <Text style={[styles.badgeText, { color: colors.danger }]}>
-                        અશુભ
-                      </Text>
+                      <Text style={[styles.badgeTxt, { color: colors.danger }]}>અશુભ</Text>
                     </View>
                   )}
-                  <View style={[styles.badge, { backgroundColor: colors.accentSoft }]}>
-                    <Text style={[styles.badgeText, { color: colors.accent }]}>
-                      {selectedPanchang.yogaGu}
-                    </Text>
-                  </View>
                 </View>
               </View>
               <Feather name="chevron-right" size={18} color={colors.primary} />
@@ -350,31 +294,29 @@ export default function CalendarScreen() {
           </Pressable>
         )}
 
-        {/* ─── Month festivals list ─── */}
+        {/* ── Festival list ── */}
         {monthFestivals.length > 0 && (
-          <View style={[styles.festSection, { marginHorizontal: 14 }]}>
-            <View style={styles.festHeader}>
-              <View style={[styles.festHeaderDot, { backgroundColor: colors.primarySoft }]}>
-                <Feather name="gift" size={13} color={colors.primary} />
+          <View style={styles.festSection}>
+            <View style={styles.festHeadRow}>
+              <View style={[styles.festHeadIcon, { backgroundColor: colors.primarySoft }]}>
+                <Feather name="gift" size={12} color={colors.primary} />
               </View>
-              <View>
-                <Text style={[styles.festHeaderTitle, { color: colors.foreground }]}>
-                  {MONTHS_EN_GU[month]}ના તહેવારો
-                </Text>
-                <Text style={[styles.festHeaderSub, { color: colors.mutedForeground }]}>
-                  {toGujaratiDigits(monthFestivals.length)} તહેવાર
-                </Text>
-              </View>
+              <Text style={[styles.festHeadText, { color: colors.foreground }]}>
+                {MONTHS_EN_GU[month]}ના તહેવારો
+              </Text>
+              <Text style={[styles.festCount, { color: colors.mutedForeground }]}>
+                {toGujaratiDigits(monthFestivals.length)}
+              </Text>
             </View>
 
             <View
               style={[
-                styles.festList,
+                styles.festCard,
                 {
-                  backgroundColor: colors.card,
+                  backgroundColor: isDark ? colors.card : "#FFFFFF",
                   borderColor: isDark
                     ? "rgba(255,255,255,0.08)"
-                    : "rgba(217,76,42,0.10)",
+                    : "rgba(217,76,42,0.12)",
                   shadowColor: colors.shadow,
                 },
               ]}
@@ -387,8 +329,8 @@ export default function CalendarScreen() {
                         styles.festDivider,
                         {
                           backgroundColor: isDark
-                            ? "rgba(255,255,255,0.07)"
-                            : "rgba(217,76,42,0.09)",
+                            ? "rgba(255,255,255,0.06)"
+                            : "rgba(217,76,42,0.08)",
                         },
                       ]}
                     />
@@ -397,15 +339,10 @@ export default function CalendarScreen() {
                     onPress={() => router.push(`/festival/${f.id}`)}
                     style={({ pressed }) => [
                       styles.festRow,
-                      { opacity: pressed ? 0.8 : 1 },
+                      { opacity: pressed ? 0.75 : 1 },
                     ]}
                   >
-                    <View
-                      style={[
-                        styles.festDayChip,
-                        { backgroundColor: colors.primarySoft },
-                      ]}
-                    >
+                    <View style={[styles.festDayChip, { backgroundColor: colors.primarySoft }]}>
                       <Text style={[styles.festDayNum, { color: colors.primary }]}>
                         {toGujaratiDigits(f.day)}
                       </Text>
@@ -418,7 +355,7 @@ export default function CalendarScreen() {
                         {f.nameEn}
                       </Text>
                     </View>
-                    <Feather name="chevron-right" size={15} color={colors.mutedForeground} />
+                    <Feather name="chevron-right" size={14} color={colors.mutedForeground} />
                   </Pressable>
                 </React.Fragment>
               ))}
@@ -430,34 +367,27 @@ export default function CalendarScreen() {
   );
 }
 
-function StatPill({ label, value }: { label: string; value: string }) {
-  return (
-    <View style={styles.statPill}>
-      <Text style={styles.statLabel}>{label}</Text>
-      <Text style={styles.statValue} numberOfLines={1}>{value}</Text>
-    </View>
-  );
-}
-
-function LegendDot({
+function LegendItem({
   color,
   label,
-  filled,
+  dot,
+  smallDot,
 }: {
   color: string;
   label: string;
-  filled?: boolean;
+  dot?: boolean;
+  smallDot?: boolean;
 }) {
   const colors = useColors();
   return (
     <View style={styles.legendItem}>
-      {filled ? (
-        <View style={[styles.legendFilledDot, { backgroundColor: color }]} />
+      {dot ? (
+        <View style={[styles.legendDot, { backgroundColor: color }]} />
       ) : (
         <View
           style={[
-            styles.legendOutlineDot,
-            { borderColor: color, backgroundColor: color + "28" },
+            styles.legendSmallDot,
+            { backgroundColor: color + "33", borderColor: color, borderWidth: 1.5 },
           ]}
         />
       )}
@@ -470,306 +400,222 @@ function LegendDot({
 
 const styles = StyleSheet.create({
   header: {
-    paddingHorizontal: 18,
-    paddingBottom: 38,
+    paddingHorizontal: 16,
+    paddingBottom: 14,
     overflow: "hidden",
   },
   glowCircle: {
     position: "absolute",
-    borderRadius: 999,
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    top: -80,
+    right: -40,
     backgroundColor: "rgba(255,255,255,0.07)",
   },
-  glowCircle1: {
-    width: 220,
-    height: 220,
-    top: -90,
-    right: -60,
-  },
-  glowCircle2: {
-    width: 130,
-    height: 130,
-    top: 40,
-    left: -50,
-  },
-  headerTop: {
+  titleRow: {
     flexDirection: "row",
+    alignItems: "center",
     justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: 18,
+    marginBottom: 10,
   },
-  headerLabel: {
-    color: "rgba(255,255,255,0.75)",
-    fontSize: 12,
-    letterSpacing: 1.2,
-    textTransform: "uppercase",
-    fontWeight: "600",
-  },
-  headerTitle: {
-    color: "#FFFFFF",
-    fontSize: 26,
-    fontWeight: "800",
-    marginTop: 2,
-    letterSpacing: 0.2,
-  },
-  todayBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    backgroundColor: "rgba(255,255,255,0.18)",
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.25)",
-  },
-  todayBtnText: {
-    color: "#FFFFFF",
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  monthNavRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 14,
-  },
-  navArrow: {
-    width: 36,
-    height: 36,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.14)",
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.2)",
-  },
-  monthCenterBlock: {
-    flex: 1,
-    alignItems: "center",
-  },
-  monthName: {
+  pageTitle: {
     color: "#FFFFFF",
     fontSize: 22,
     fontWeight: "800",
     letterSpacing: 0.2,
   },
-  monthMeta: {
+  todayBtn: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    marginTop: 3,
-  },
-  monthMetaText: {
-    color: "rgba(255,255,255,0.78)",
-    fontSize: 11,
-    fontWeight: "500",
-  },
-  monthMetaDot: {
-    width: 3,
-    height: 3,
-    borderRadius: 1.5,
-    backgroundColor: "rgba(255,255,255,0.45)",
-  },
-  statsStrip: {
-    flexDirection: "row",
-    backgroundColor: "rgba(0,0,0,0.14)",
+    gap: 4,
+    backgroundColor: "rgba(255,255,255,0.18)",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
     borderRadius: 16,
-    paddingVertical: 10,
-    paddingHorizontal: 6,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.12)",
+    borderColor: "rgba(255,255,255,0.22)",
   },
-  statsDivider: {
-    width: 1,
-    backgroundColor: "rgba(255,255,255,0.2)",
-    marginVertical: 4,
-  },
-  statPill: {
-    flex: 1,
-    alignItems: "center",
-    gap: 2,
-  },
-  statLabel: {
-    color: "rgba(255,255,255,0.65)",
-    fontSize: 9,
-    letterSpacing: 0.6,
-    textTransform: "uppercase",
-    fontWeight: "600",
-  },
-  statValue: {
+  todayBtnText: {
     color: "#FFFFFF",
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: "700",
   },
+  monthRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  navArrow: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.15)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.2)",
+  },
+  monthCenter: {
+    flex: 1,
+    alignItems: "center",
+  },
+  monthName: {
+    color: "#FFFFFF",
+    fontSize: 19,
+    fontWeight: "800",
+    letterSpacing: 0.1,
+  },
+  monthSub: {
+    color: "rgba(255,255,255,0.72)",
+    fontSize: 10,
+    marginTop: 2,
+    letterSpacing: 0.3,
+  },
   calCard: {
-    borderRadius: 24,
+    borderRadius: 20,
     borderWidth: 1,
     overflow: "hidden",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.18,
-    shadowRadius: 24,
-    elevation: 8,
-  },
-  calInner: {
-    padding: 14,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.14,
+    shadowRadius: 20,
+    elevation: 6,
+    padding: 10,
   },
   legendRow: {
     flexDirection: "row",
+    alignItems: "center",
     justifyContent: "center",
-    gap: 14,
-    paddingBottom: 10,
+    gap: 12,
+    paddingBottom: 8,
   },
   legendItem: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 5,
+    gap: 4,
   },
-  legendFilledDot: {
-    width: 9,
-    height: 9,
-    borderRadius: 4.5,
+  legendDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
-  legendOutlineDot: {
-    width: 9,
-    height: 9,
-    borderRadius: 4.5,
-    borderWidth: 1.5,
+  legendSmallDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
   legendLabel: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: "500",
   },
-  legendLine: {
+  legendSep: {
     height: 1,
-    marginBottom: 10,
+    marginBottom: 8,
     borderRadius: 1,
   },
   selectedCard: {
-    borderRadius: 20,
+    marginTop: 12,
+    borderRadius: 18,
     borderWidth: 1.5,
     overflow: "hidden",
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
+    shadowOpacity: 0.10,
+    shadowRadius: 14,
     elevation: 4,
   },
-  selectedCardGradient: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  selectedCardRow: {
+  selectedInner: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 14,
-    padding: 16,
+    gap: 12,
+    padding: 14,
   },
-  selectedDateChip: {
-    width: 58,
-    height: 64,
-    borderRadius: 16,
+  selectedChip: {
+    width: 54,
+    height: 60,
+    borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
   },
-  selectedDateNum: {
-    fontSize: 26,
+  selectedChipNum: {
+    fontSize: 24,
     fontWeight: "800",
-    lineHeight: 28,
+    lineHeight: 26,
   },
-  selectedDateMonth: {
-    fontSize: 10,
+  selectedChipMonth: {
+    fontSize: 9,
     fontWeight: "700",
     marginTop: 2,
     letterSpacing: 0.4,
   },
-  selectedInfo: {
-    flex: 1,
-  },
+  selectedBody: { flex: 1 },
   selectedTithi: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: "800",
   },
-  selectedNak: {
-    fontSize: 12,
+  selectedMeta: {
+    fontSize: 11,
     marginTop: 3,
   },
   selectedBadges: {
     flexDirection: "row",
     gap: 6,
-    marginTop: 8,
-    flexWrap: "wrap",
+    marginTop: 7,
   },
   badge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 7,
   },
-  badgeText: {
+  badgeTxt: {
     fontSize: 10,
     fontWeight: "700",
   },
-  festSection: {
-    marginTop: 20,
-  },
-  festHeader: {
+  festSection: { marginTop: 16 },
+  festHeadRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    marginBottom: 10,
+    gap: 8,
+    marginBottom: 8,
     paddingHorizontal: 2,
   },
-  festHeaderDot: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+  festHeadIcon: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     alignItems: "center",
     justifyContent: "center",
   },
-  festHeaderTitle: {
-    fontSize: 16,
+  festHeadText: {
+    fontSize: 14,
     fontWeight: "700",
+    flex: 1,
   },
-  festHeaderSub: {
-    fontSize: 11,
-    marginTop: 1,
-  },
-  festList: {
-    borderRadius: 20,
+  festCount: { fontSize: 12 },
+  festCard: {
+    borderRadius: 18,
     borderWidth: 1,
     overflow: "hidden",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.1,
-    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
     elevation: 3,
   },
-  festDivider: {
-    height: 1,
-    marginHorizontal: 14,
-  },
+  festDivider: { height: 1, marginHorizontal: 12 },
   festRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 13,
+    gap: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 11,
   },
   festDayChip: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+    width: 36,
+    height: 36,
+    borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
   },
-  festDayNum: {
-    fontSize: 17,
-    fontWeight: "800",
-  },
-  festBody: {
-    flex: 1,
-  },
-  festName: {
-    fontSize: 14,
-    fontWeight: "700",
-  },
-  festNameEn: {
-    fontSize: 11,
-    marginTop: 2,
-  },
+  festDayNum: { fontSize: 15, fontWeight: "800" },
+  festBody: { flex: 1 },
+  festName: { fontSize: 13, fontWeight: "700" },
+  festNameEn: { fontSize: 11, marginTop: 1 },
 });

@@ -59,7 +59,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="calendar"
         options={{
-          title: "પંચાંગ",
+          title: "કેલેન્ડર",
           tabBarIcon: ({ color, focused }) => (
             <Feather name="calendar" size={focused ? 24 : 22} color={color} />
           ),

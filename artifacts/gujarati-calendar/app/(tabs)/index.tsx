@@ -85,7 +85,7 @@ export default function HomeScreen() {
             >
               <Image
                 source={require("@/assets/images/app-logo.jpg")}
-                style={{ width: 42, height: 42, borderRadius: 21 }}
+                style={{ width: 44, height: 44, borderRadius: 10 }}
                 resizeMode="cover"
               />
             </Pressable>

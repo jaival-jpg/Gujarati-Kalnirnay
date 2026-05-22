@@ -27,7 +27,7 @@ interface SettingsContextValue extends SettingsState {
 const STORAGE_KEY = "@gujarati-calendar/settings/v1";
 
 const defaultState: SettingsState = {
-  themeMode: "system",
+  themeMode: "dark",
   notificationsEnabled: false,
   language: "gu",
 };

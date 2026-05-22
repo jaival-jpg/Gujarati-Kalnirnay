@@ -152,7 +152,7 @@ export function CalendarMonth({
                 ? colors.mutedForeground + "55"
                 : isHoliday
                 ? todayRed
-                : colors.primary;
+                : colors.foreground;
 
               const dotColor = cell.isShubh
                 ? colors.success

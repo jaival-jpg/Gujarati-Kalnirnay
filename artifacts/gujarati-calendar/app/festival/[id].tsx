@@ -122,32 +122,6 @@ export default function FestivalDetailScreen() {
             </View>
           </GlassCard>
 
-          {festival.region ? (
-            <GlassCard>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-                <View
-                  style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 18,
-                    backgroundColor: colors.accentSoft,
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <Feather name="map-pin" size={16} color={colors.accent} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.descLabel, { color: colors.mutedForeground }]}>
-                    પ્રદેશ
-                  </Text>
-                  <Text style={{ color: colors.foreground, fontSize: 15, fontWeight: "600" }}>
-                    {festival.region}
-                  </Text>
-                </View>
-              </View>
-            </GlassCard>
-          ) : null}
 
           <Pressable
             onPress={() =>

@@ -13,108 +13,150 @@ import {
   YOGA_GU,
 } from "@/constants/panchang";
 
-const SYNODIC_MONTH = 29.530588853;
-const REF_NEW_MOON = Date.UTC(2000, 0, 6, 18, 14);
-const J2000 = Date.UTC(2000, 0, 1, 12);
-const AYANAMSA = 24.13;
-
-function deg2rad(d: number): number {
-  return (d * Math.PI) / 180;
-}
-
-function normalize360(v: number): number {
-  return ((v % 360) + 360) % 360;
-}
-
-function daysSince(date: Date, epoch: number): number {
-  return (date.getTime() - epoch) / 86400000;
-}
-
-export function lunarAge(date: Date): number {
-  const days = daysSince(date, REF_NEW_MOON);
-  return ((days % SYNODIC_MONTH) + SYNODIC_MONTH) % SYNODIC_MONTH;
-}
-
-export function moonLongitude(date: Date): number {
-  const days = daysSince(date, J2000);
-  const lon = 218.3164591 + 13.176358 * days - AYANAMSA;
-  return normalize360(lon);
-}
-
-export function sunLongitude(date: Date): number {
-  const days = daysSince(date, J2000);
-  const lon = 280.46 + 0.9856 * days - AYANAMSA;
-  return normalize360(lon);
-}
+import {
+  julianDay,
+  lahiriAyanamsa,
+  moonLonLat,
+  norm360,
+  sunLonTropical,
+} from "./astronomy";
 
 export interface Panchang {
   date: Date;
+  // Vaar
   vaarIndex: number;
   vaarGu: string;
-  tithiIndex: number;
+  // Tithi
+  tithiIndex: number;    // 0-14 within paksha
   tithiGu: string;
   tithiEn: string;
-  pakshaIndex: number;
+  // Paksha
+  pakshaIndex: number;   // 0 = Shukla, 1 = Krishna
   pakshaGu: string;
   pakshaEn: string;
+  // Nakshatra
   nakshatraIndex: number;
   nakshatraGu: string;
   nakshatraEn: string;
+  // Yoga
   yogaIndex: number;
   yogaGu: string;
+  // Karan
   karanIndex: number;
   karanGu: string;
+  // Vikram Samvat
   vikramMonthGu: string;
+  vikramMonthIndex: number;
   vikramYear: number;
+  // Flags
   isShubh: boolean;
   isAshubh: boolean;
 }
 
-function noonOf(date: Date): Date {
-  const d = new Date(date);
-  d.setHours(12, 0, 0, 0);
+/**
+ * Returns a Date set to noon IST on the given calendar date,
+ * expressed as UTC (noon IST = 06:30 UTC).
+ */
+function noonISTasUTC(date: Date): Date {
+  const d = new Date(
+    Date.UTC(
+      date.getFullYear(),
+      date.getMonth(),
+      date.getDate(),
+      6, // 06:30 UTC = 12:00 IST
+      30,
+      0,
+    ),
+  );
   return d;
 }
 
 export function computePanchang(date: Date): Panchang {
-  const noon = noonOf(date);
-  const age = lunarAge(noon);
-  const tithiAbs = Math.floor((age / SYNODIC_MONTH) * 30);
-  const pakshaIndex = tithiAbs < 15 ? 0 : 1;
-  const tithiIndex = tithiAbs % 15;
+  const noon = noonISTasUTC(date);
+  const jd = julianDay(noon);
+  const ayanamsa = lahiriAyanamsa(jd);
 
-  const moonLon = moonLongitude(noon);
-  const nakshatraIndex = Math.floor(moonLon / (360 / 27)) % 27;
+  // ── Tropical longitudes ───────────────────────────────────────────────────
+  const sunTrop = sunLonTropical(jd);
+  const { lon: moonTrop } = moonLonLat(jd);
 
-  const yogaSum = (sunLongitude(noon) + moonLon) % 360;
-  const yogaIndex = Math.floor(yogaSum / (360 / 27)) % 27;
+  // ── Sidereal longitudes ───────────────────────────────────────────────────
+  const sunSid  = norm360(sunTrop  - ayanamsa);
+  const moonSid = norm360(moonTrop - ayanamsa);
 
-  const halfTithi = Math.floor((age / SYNODIC_MONTH) * 60);
-  let karanIndex: number;
-  if (halfTithi === 0) karanIndex = 10;
-  else if (halfTithi === 57) karanIndex = 7;
-  else if (halfTithi === 58) karanIndex = 8;
-  else if (halfTithi === 59) karanIndex = 9;
-  else karanIndex = (halfTithi - 1) % 7;
-
-  const vaarIndex = noon.getDay();
+  // ── Tithi ─────────────────────────────────────────────────────────────────
+  // Each tithi = 12° of elongation between Moon and Sun
+  const elongation = norm360(moonTrop - sunTrop); // tropical difference
+  const tithiRaw   = Math.floor(elongation / 12); // 0-29
+  const pakshaIndex = tithiRaw >= 15 ? 1 : 0;     // 0=Shukla, 1=Krishna
+  const tithiIndex  = tithiRaw % 15;               // 0-14
 
   const tithiGu =
     pakshaIndex === 1 && tithiIndex === 14
       ? TITHI_KRISHNA_LAST_GU
-      : TITHI_NAMES_GU[tithiIndex] ?? "";
+      : (TITHI_NAMES_GU[tithiIndex] ?? "");
   const tithiEn = TITHI_NAMES_EN[tithiIndex] ?? "";
 
-  const vikramMonthGu = VIKRAM_MONTHS_GU[noon.getMonth()] ?? "";
-  const vikramYear = noon.getFullYear() + 57;
+  // ── Nakshatra ─────────────────────────────────────────────────────────────
+  // 27 nakshatras × (360/27)° each, based on sidereal moon longitude
+  const nakshatraIndex = Math.floor(moonSid / (360 / 27)) % 27;
 
-  const isAshubh = karanIndex === 6 || yogaIndex === 16 || yogaIndex === 26;
+  // ── Yoga ──────────────────────────────────────────────────────────────────
+  // 27 yogas based on sum of sidereal sun + moon longitudes
+  const yogaSum  = norm360(sunSid + moonSid);
+  const yogaIndex = Math.floor(yogaSum / (360 / 27)) % 27;
+
+  // ── Karan ─────────────────────────────────────────────────────────────────
+  // Each karan = half a tithi. There are 60 half-tithis in a lunar month.
+  // First half-tithi (0) = Kimstughna (fixed), last three fixed karans at 57-59.
+  // Remaining 56 half-tithis cycle through 7 movable karans.
+  const halfTithi = Math.floor(elongation / 6); // 0-59
+  let karanIndex: number;
+  if (halfTithi === 0) {
+    karanIndex = 10; // Kimstughna
+  } else if (halfTithi === 57) {
+    karanIndex = 7;  // Shakuni
+  } else if (halfTithi === 58) {
+    karanIndex = 8;  // Chatushpada
+  } else if (halfTithi === 59) {
+    karanIndex = 9;  // Naga
+  } else {
+    karanIndex = (halfTithi - 1) % 7; // 0=Bava…6=Vishti
+  }
+
+  // ── Vaar ──────────────────────────────────────────────────────────────────
+  const vaarIndex = date.getDay(); // 0=Sun … 6=Sat (getDay is local, fine for display)
+
+  // ── Vikram Samvat month & year ────────────────────────────────────────────
+  // Solar month: which rashi (30° arc) the Sun is in, in sidereal coordinates.
+  // Index 0 = Mesha (Chaitra), 1 = Vrishabha (Vaishakha), …, 11 = Meena (Phalguna).
+  const vikramMonthIndex = Math.floor(sunSid / 30) % 12;
+
+  // Vikram year changes at Chaitra Shukla Pratipada (~mid-April).
+  // Approximation: if sun is in Phalguna (month 11, sun in Meena 330°-360°)
+  // and we are in the first quarter of the Gregorian year, the Vikram year
+  // has not yet incremented — otherwise add 57.
+  const gregYear = date.getFullYear();
+  const gregMonth = date.getMonth(); // 0-based
+  const vikramYear =
+    vikramMonthIndex === 11 && gregMonth < 4
+      ? gregYear + 56
+      : gregMonth < 3
+      ? gregYear + 56
+      : gregYear + 57;
+
+  // ── Shubh / Ashubh ────────────────────────────────────────────────────────
+  const isAshubh =
+    karanIndex === 6 || // Vishti (Bhadra)
+    yogaIndex === 16 || // Vyatipata
+    yogaIndex === 26;   // Vaidhriti
+
   const isShubh =
     !isAshubh &&
-    (tithiIndex === 4 ||
-      tithiIndex === 7 ||
-      tithiIndex === 10 ||
-      (pakshaIndex === 0 && tithiIndex === 14));
+    (tithiIndex === 4 ||  // Panchami
+      tithiIndex === 7 ||  // Ashtami
+      tithiIndex === 10 || // Ekadashi
+      (pakshaIndex === 0 && tithiIndex === 14)); // Purnima
 
   return {
     date,
@@ -133,7 +175,8 @@ export function computePanchang(date: Date): Panchang {
     yogaGu: YOGA_GU[yogaIndex] ?? "",
     karanIndex,
     karanGu: KARAN_GU[karanIndex] ?? "",
-    vikramMonthGu,
+    vikramMonthIndex,
+    vikramMonthGu: VIKRAM_MONTHS_GU[vikramMonthIndex] ?? "",
     vikramYear,
     isShubh,
     isAshubh,
@@ -150,3 +193,7 @@ export function toGujaratiDigits(value: number | string): string {
     })
     .join("");
 }
+
+// Re-export legacy helpers so existing imports still resolve
+export { julianDay, sunLonTropical, moonLonLat as moonLonLatAccurate };
+export { lahiriAyanamsa };

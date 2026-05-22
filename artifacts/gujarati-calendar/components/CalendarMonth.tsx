@@ -98,7 +98,7 @@ export function CalendarMonth({
     ? "rgba(255,255,255,0.07)"
     : "rgba(217,76,42,0.10)";
 
-  const cellBg = "#FFF4E6";
+  const cellBg = "#1A0E0A";
   const todayRed = "#E53935";
 
   return (
@@ -152,7 +152,7 @@ export function CalendarMonth({
                 ? colors.mutedForeground + "55"
                 : isHoliday
                 ? todayRed
-                : colors.foreground;
+                : "#FF7A45";
 
               const dotColor = cell.isShubh
                 ? colors.success

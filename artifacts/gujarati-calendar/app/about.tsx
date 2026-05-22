@@ -1,7 +1,6 @@
 import { Feather } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
 import React from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { Image, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { GlassCard } from "@/components/GlassCard";
@@ -25,14 +24,11 @@ export default function AboutScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.brandWrap}>
-          <LinearGradient
-            colors={[colors.gradientStart, colors.gradientEnd]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
+          <Image
+            source={require("@/assets/images/app-logo.jpg")}
             style={styles.brandIcon}
-          >
-            <Text style={styles.brandOm}>ॐ</Text>
-          </LinearGradient>
+            resizeMode="cover"
+          />
           <Text style={[styles.brandTitle, { color: colors.foreground }]}>
             ગુજરાતી પંચાંગ
           </Text>
@@ -91,6 +87,9 @@ export default function AboutScreen() {
         <Text style={[styles.foot, { color: colors.mutedForeground }]}>
           સર્વ સ્વ આત્મ • શુભમ ભવતુ
         </Text>
+        <Text style={[styles.developer, { color: colors.mutedForeground }]}>
+          Developer : Jaival Pandya
+        </Text>
       </ScrollView>
     </View>
   );
@@ -148,11 +147,6 @@ const styles = StyleSheet.create({
     shadowRadius: 14,
     shadowOffset: { width: 0, height: 8 },
     elevation: 6,
-  },
-  brandOm: {
-    color: "#FFFFFF",
-    fontSize: 38,
-    fontWeight: "800",
   },
   brandTitle: {
     fontSize: 22,
@@ -216,5 +210,11 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 18,
     fontStyle: "italic",
+  },
+  developer: {
+    textAlign: "center",
+    fontSize: 11,
+    marginTop: 6,
+    letterSpacing: 0.3,
   },
 });

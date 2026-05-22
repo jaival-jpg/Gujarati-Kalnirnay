@@ -3,6 +3,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React, { useMemo } from "react";
 import {
+  Image,
   Platform,
   Pressable,
   ScrollView,
@@ -82,7 +83,11 @@ export default function HomeScreen() {
               style={styles.omChip}
               hitSlop={8}
             >
-              <Text style={styles.om}>ॐ</Text>
+              <Image
+                source={require("@/assets/images/app-logo.jpg")}
+                style={{ width: 42, height: 42, borderRadius: 21 }}
+                resizeMode="cover"
+              />
             </Pressable>
           </View>
 
